@@ -1,0 +1,183 @@
+# application main flow                  
+                       
+                         ┌──────────────────────┐
+                         │    USER VISITS       │
+                         │      WEBSITE         │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │   REACT FRONTEND     │
+                         │   React + TypeScript │
+                         │   Redux Toolkit      │
+                         │   React Router       │
+                         └──────────┬───────────┘
+                                    │
+                    ┌───────────────┴────────────────┐
+                    │                                │
+                    ▼                                ▼
+             ┌─────────────┐                  ┌─────────────┐
+             │  ATTENDEE   │                  │  ORGANIZER  │
+             └──────┬──────┘                  └──────┬──────┘
+                    │                                │
+                    ▼                                ▼
+             Browse Events                    Login / JWT
+                    │                                │
+                    ▼                                ▼
+             Search / Filter                    Dashboard
+                    │                                │
+                    ▼                                ▼
+             Event Details                     Create Event
+                    │                                │
+                    ▼                                ▼
+             Select Ticket                    Add Ticket Tiers
+                    │                                │
+                    ▼                                ▼
+                Checkout                       Publish Event
+                    │                                │
+                    ▼                                │
+              Login / JWT                            │
+                    │                                │
+                    └───────────────┬────────────────┘
+                                    │
+                                    │ HTTP Request
+                                    ▼
+                         ┌──────────────────────┐
+                         │   EXPRESS BACKEND    │
+                         │   Node.js + TS       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       ROUTES         │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     MIDDLEWARE       │
+                         │                      │
+                         │ JWT Authentication   │
+                         │ Role Authorization   │
+                         │ Request Validation   │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     CONTROLLER       │
+                         │ Handle HTTP request  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       SERVICE        │
+                         │   Business Logic     │
+                         │                      │
+                         │ • Inventory check    │
+                         │ • Booking logic      │
+                         │ • Promo validation   │
+                         │ • Price calculation  │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       MODELS         │
+                         │      Mongoose        │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       MONGODB        │
+                         │                      │
+                         │  users               │
+                         │  events              │
+                         │  bookings            │
+                         │  promoCodes          │
+                         └──────────────────────┘
+
+
+# db design.
+
+
+                         ┌──────────────────┐
+                         │      USERS       │
+                         │   Collection     │
+                         ├──────────────────┤
+                         │ _id : ObjectId   │
+                         │ name : String    │
+                         │ email : String   │
+                         │ password:String  │
+                         │ role : String    │
+                         └────────┬─────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                 1 : N                       1 : N
+                    │                           │
+                    ▼                           ▼
+          ┌──────────────────┐       ┌──────────────────┐
+          │      EVENTS      │       │     BOOKINGS     │
+          │   Collection     │       │    Collection    │
+          ├──────────────────┤       ├──────────────────┤
+          │ _id : ObjectId   │       │ _id : ObjectId   │
+          │ organizer:ObjectId│◄─────│ user:ObjectId    │
+          │ title : String   │       │ event:ObjectId ──┼──► EVENTS
+          │ description:String│      │ tickets[]        │
+          │ category:String  │       │ totalAmount:Number│
+          │ date : Date      │       │ promoCode:ObjectId│
+          │ venue : String   │       │ discount:Number  │
+          │ status : String  │       │ paymentStatus    │
+          │ ticketTiers[]    │       │ bookingStatus    │
+          │ createdAt : Date │       │ paymentMethod    │
+          │ updatedAt : Date │       │ createdAt : Date │
+          └────────┬─────────┘       └────────┬─────────┘
+                   │                          │
+                  1 : N                      N : 1
+                   │                          │
+                   ▼                          ▼
+          ┌──────────────────┐       ┌──────────────────┐
+          │ ticketTiers[]    │       │   PROMO CODES    │
+          │   EMBEDDED       │       │    Collection    │
+          ├──────────────────┤       ├──────────────────┤
+          │ _id : ObjectId   │       │ _id : ObjectId   │
+          │ name : String    │       │ code : String    │
+          │ price : Number   │       │ discount : Number│
+          │ capacity: Number │       │ isActive:Boolean │
+          │ sold : Number    │       │ expiresAt : Date │
+          └──────────────────┘       └──────────────────┘
+
+          BOOKING
+              │
+             1:N
+              ▼
+        ┌──────────────────┐
+        │    tickets[]     │
+        │    EMBEDDED      │
+        ├──────────────────┤
+        │ tierId : ObjectId│
+        │ tierName : String│
+        │ quantity : Number│
+        │ price : Number   │
+        │ subtotal : Number│
+        └──────────────────┘
+
+USER
+ ├── 1:N → EVENTS
+ └── 1:N → BOOKINGS
+
+EVENT
+ ├── N:1 → USER (organizer)
+ ├── 1:N → BOOKINGS
+ └── 1:N → ticketTiers[] [embedded]
+
+BOOKING
+ ├── N:1 → USER
+ ├── N:1 → EVENT
+ ├── N:1 → PROMO CODE
+ └── 1:N → tickets[] [embedded]
+
+PROMO CODE
+ └── 1:N → BOOKINGS
+
+ 4 actual collections: users, events, bookings, promoCodes.
+
+2 embedded arrays: events.ticketTiers[], bookings.tickets[].
