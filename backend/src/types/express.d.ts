@@ -1,8 +1,8 @@
-import type { JwtPayload } from "jsonwebtoken";
+import type { Request } from "express";
 
-interface AuthUser extends JwtPayload {
+export interface AuthUser {
   userId: string;
-  role: string;
+  role: "attendee" | "organizer";
 }
 
 declare global {

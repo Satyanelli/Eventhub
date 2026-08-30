@@ -1,0 +1,47 @@
+:root {
+  /* Brand Colors */
+  --color-brand-50: #f5fbfa;
+  --color-brand-100: #ddf7f2;
+  --color-brand-200: #b9eee4;
+  --color-brand-300: #71d8c5;
+  --color-brand-400: #3bc2aa;
+  --color-brand-500: #0f8f78;
+  --color-brand-600: #087b67;
+  --color-brand-700: #066453;
+  --color-brand-800: #075e54;
+  --color-brand-900: #12312c;
+
+  /* Surface */
+  --color-surface: #ffffff;
+
+  /* Text */
+  --color-text-primary: #12312c;
+  --color-text-secondary: #5e706c;
+  --color-text-muted: #8b9b98;
+
+  /* Status */
+  --color-warning: #f59e0b;
+  --color-error: #dc5a5a;
+}
+
+@theme {
+  --color-brand-50: #f5fbfa;
+  --color-brand-100: #ddf7f2;
+  --color-brand-200: #b9eee4;
+  --color-brand-300: #71d8c5;
+  --color-brand-400: #3bc2aa;
+  --color-brand-500: #0f8f78;
+  --color-brand-600: #087b67;
+  --color-brand-700: #066453;
+  --color-brand-800: #075e54;
+  --color-brand-900: #12312c;
+
+  --color-surface: #ffffff;
+
+  --color-text-primary: #12312c;
+  --color-text-secondary: #5e706c;
+  --color-text-muted: #8b9b98;
+
+  --color-warning: #f59e0b;
+  --color-error: #dc5a5a;
+}

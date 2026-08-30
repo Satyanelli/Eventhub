@@ -1,9 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
-import { registerUser, loginUser } from "../services/auth.service.js";
+
+import {
+  registerUser,
+  loginUser,
+  refreshAccessToken,
+} from "../services/auth.service.js";
+
+import User from "../models/User.js";
+
 import AppError from "../utils/AppError.js";
-import { refreshAccessToken } from "../services/auth.service.js";
 
-
+// =========================
+// REGISTER
+// =========================
 
 export async function register(
   req: Request,
@@ -29,6 +38,9 @@ export async function register(
   }
 }
 
+// =========================
+// LOGIN
+// =========================
 
 export async function login(
   req: Request,
@@ -38,23 +50,21 @@ export async function login(
   try {
     const result = await loginUser(req.body);
 
+    console.log("LOGIN SUCCESS");
+
     res
       .cookie("accessToken", result.accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-
-        //send this cookie only over HTTPS when we're in production. We normally use HTTP locally:
-        sameSite: "strict",
-
-        // tells the browser to be very restrictive about sending your authentication cookie when a request comes from another site, helping protect against CSRF.
-
-        maxAge: 15 * 60 * 1000, //15 minutes in ms
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 15 * 60 * 1000,
       })
-
       .cookie("refreshToken", result.refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: false,
+        sameSite: "lax",
+        path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .status(200)
@@ -68,7 +78,9 @@ export async function login(
   }
 }
 
-
+// =========================
+// GET CURRENT USER
+// =========================
 
 export async function getMe(
   req: Request,
@@ -76,14 +88,28 @@ export async function getMe(
   next: NextFunction
 ) {
   try {
+    if (!req.user) {
+      throw new AppError("Not authenticated", 401);
+    }
+
+    const user = await User.findById(req.user.userId).select("-password");
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
     res.status(200).json({
       success: true,
-      data: req.user,
+      data: user,
     });
   } catch (error) {
     next(error);
   }
 }
+
+// =========================
+// REFRESH ACCESS TOKEN
+// =========================
 
 export async function refreshToken(
   req: Request,
@@ -102,8 +128,9 @@ export async function refreshToken(
     res
       .cookie("accessToken", result.accessToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: false,
+        sameSite: "lax",
+        path: "/",
         maxAge: 15 * 60 * 1000,
       })
       .status(200)
@@ -116,6 +143,10 @@ export async function refreshToken(
   }
 }
 
+// =========================
+// LOGOUT
+// =========================
+
 export function logout(
   req: Request,
   res: Response,
@@ -123,8 +154,18 @@ export function logout(
 ) {
   try {
     res
-      .clearCookie("accessToken")
-      .clearCookie("refreshToken")
+      .clearCookie("accessToken", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+      })
+      .clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
+      })
       .status(200)
       .json({
         success: true,
@@ -134,28 +175,3 @@ export function logout(
     next(error);
   }
 }
-
-
-
-/*
-Why this is better
-
-Instead of:
-
-JSON
-├── user
-├── accessToken ❌
-└── refreshToken ❌
-
-we have:
-
-HttpOnly Cookies
-├── accessToken
-└── refreshToken
-
-JSON
-└── user information
-
-HttpOnly means frontend JavaScript cannot directly read the token, which reduces exposure to XSS attacks.
-
-*/

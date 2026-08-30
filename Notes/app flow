@@ -181,3 +181,230 @@ PROMO CODE
  4 actual collections: users, events, bookings, promoCodes.
 
 2 embedded arrays: events.ticketTiers[], bookings.tickets[].
+
+
+
+
+
+
+
+
+
+
+ticketTiers: [
+
+  {
+    _id: ObjectId,
+    name: "General Entry",
+    type: "general",
+    description: "Standard event entry",
+    price: 500,
+    currency: "INR",
+    capacity: 500,
+    sold: 120,
+    salesStart: Date,
+    salesEnd: Date,
+    amenities: [
+      "Standard Entry"
+    ],
+    isActive: true
+  },
+
+  {
+    _id: ObjectId,
+    name: "Stag Entry",
+    type: "stag",
+    description: "Single male entry",
+    price: 800,
+    currency: "INR",
+    capacity: 200,
+    sold: 75,
+    salesStart: Date,
+    salesEnd: Date,
+    amenities: [
+      "Standard Entry"
+    ],
+    isActive: true
+  },
+
+  {
+    _id: ObjectId,
+    name: "Couple Entry",
+    type: "couple",
+    description: "Entry for two people",
+    price: 1200,
+    currency: "INR",
+    capacity: 150,
+    sold: 60,
+    salesStart: Date,
+    salesEnd: Date,
+    amenities: [
+      "Standard Entry",
+      "Welcome Drink"
+    ],
+    isActive: true
+  },
+
+  {
+    _id: ObjectId,
+    name: "VIP Entry",
+    type: "vip",
+    description: "Premium event experience",
+    price: 2500,
+    currency: "INR",
+    capacity: 100,
+    sold: 35,
+    salesStart: Date,
+    salesEnd: Date,
+    amenities: [
+      "Priority Entry",
+      "VIP Lounge",
+      "Reserved Seating"
+    ],
+    isActive: true
+  }
+
+]
+
+
+
+--------
+
+
+# 2nd
+
+
+                         ┌─────────────────────────┐
+                         │         USERS           │
+                         ├─────────────────────────┤
+                         │ _id          ObjectId   │
+                         │ firstName    String     │
+                         │ lastName     String     │
+                         │ email        String UQ  │
+                         │ password     String     │
+                         │ role         String     │
+                         │ isVerified   Boolean    │
+                         │ profileImage String     │
+                         │ phone        String     │
+                         │ address      Object     │
+                         │ createdAt    Date       │
+                         │ updatedAt    Date       │
+                         └────────────┬────────────┘
+                                      │
+                         1:N          │          1:N
+                         creates      │          books
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │                                   │
+                    ▼                                   ▼
+          ┌────────────────────────┐          ┌────────────────────────┐
+          │         EVENTS         │          │       BOOKINGS         │
+          ├────────────────────────┤          ├────────────────────────┤
+          │ _id          ObjectId  │          │ _id          ObjectId  │
+          │ organizerId  ObjectId ─┼───┐      │ bookingNumber String   │
+          │ title        String    │   │      │ userId       ObjectId ─┼──► USERS
+          │ slug         String UQ │   │      │ eventId      ObjectId ─┼──► EVENTS
+          │ description  String    │   │      │ tickets[]              │
+                                       │      │ totalAmount  Number    │
+          │ category     String    │   │      │ discountAmount Number  │
+          │ tags[]       String    │   │      │ finalAmount  Number    │
+          │ startAt      Date      │   │      │ promoCode    String    │
+          │ endAt        Date      │   │      │ paymentStatus String   │
+          │ timezone     String    │   │      │ paymentMethod String   │
+          │ location     Object    │   │      │ paymentId    String    │
+          │ isOnline     Boolean   │   │      │ bookingStatus String   │
+          │ onlineUrl    String    │   │      │ bookedAt     Date      │
+          │ image        String    │   │      │ cancelledAt  Date      │
+          │                            │   │  │ updatedAt    Date      │
+          │ ticketTiers[]          │   │      └────────────────────────┘
+          │ createdAt    Date      │   │
+          │ updatedAt    Date      │   │
+          └───────────┬────────────┘   │
+                      │                │
+                      │ embedded      │
+                      ▼                │
+          ┌────────────────────────┐   │
+          │      ticketTiers[]     │   │
+          │       EMBEDDED         │   │
+          ├────────────────────────┤   │
+          │ _id          ObjectId  │   │
+          │ name         String    │   │
+          │ type         String    │   │
+          │ description  String    │   │
+          │ price        Number    │   │
+          │ currency     String    │   │
+          │ capacity     Number    │   │
+          │ sold         Number    │   │
+          │ salesStart   Date      │   │
+          │ salesEnd     Date      │   │
+          │ amenities[]  String    │   │
+          │ isActive     Boolean   │   │
+          └────────────────────────┘   │
+                                       │
+                                       │
+                         ┌─────────────┘
+                         │
+                         │ N:1
+                         ▼
+                ┌──────────────────────┐
+                │      PROMOCODES      │
+                ├──────────────────────┤
+                │ _id          ObjectId│
+                │ eventId      ObjectId│
+                │ code         String  │
+                │ discountType String  │
+                │ discountValue Number │
+                │ maxUses      Number  │
+                │ usedCount    Number  │
+                │ minOrderAmount Number│
+                │ validFrom    Date    │
+                │ validUntil   Date    │
+                │ isActive     Boolean │
+                │ createdAt    Date    │
+                │ updatedAt    Date    │
+                └──────────────────────┘
+
+
+                    BOOKING.tickets[] EMBEDDED
+                    ┌────────────────────────┐
+                    │ tierId       ObjectId  │
+                    │ tierName     String    │
+                    │ ticketType   String    │
+                    │ quantity     Number    │
+                    │ price        Number    │
+                    │ subtotal     Number    │
+                    └────────────────────────┘
+
+
+
+------
+
+General Entry
+    type: "general"
+    price: ₹500
+    amenities: []
+
+Single Entry
+    type: "single"
+    price: ₹500
+    amenities: []
+
+Stag Entry
+    type: "stag"
+    price: ₹800
+    amenities: []
+
+Couple Entry
+    type: "couple"
+    price: ₹1200
+    amenities: []
+
+VIP Entry
+    type: "vip"
+    price: ₹2500
+    amenities: [
+        "Priority Entry",
+        "VIP Lounge Access",
+        "Free Welcome Drink",
+        "Reserved Seating"
+    ]

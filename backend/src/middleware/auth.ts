@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+
 import AppError from "../utils/AppError.js";
 import type { AuthUser } from "../types/express.js";
 
@@ -22,6 +23,10 @@ export function protect(
     }
 
     const decoded = jwt.verify(token, secret) as AuthUser;
+
+    if (!decoded.userId || !decoded.role) {
+      throw new AppError("Invalid access token", 401);
+    }
 
     req.user = decoded;
 
