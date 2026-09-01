@@ -135,7 +135,9 @@ export const updateEvent = async (
 // DELETE EVENT
 // ==============================
 
-export const deleteEvent = async (id: string) => {
+export const deleteEvent = async (
+  id: string
+) => {
   const response = await axios.delete(
     `${EVENTS_API_URL}/${id}`,
     {
@@ -152,15 +154,15 @@ export const deleteEvent = async (id: string) => {
 
 export const getTicketsByEvent = async (
   eventId: string
-): Promise<Ticket[]> => {
+): Promise<{
+  success: boolean;
+  data: Ticket[];
+}> => {
   const response = await axios.get(
     `${TICKETS_API_URL}/event/${eventId}`
   );
 
-  // Backend returns:
-  // { success: true, data: [...] }
-
-  return response.data.data;
+  return response.data;
 };
 
 // ==============================
@@ -182,9 +184,6 @@ export const createTicket = async (
       withCredentials: true,
     }
   );
-
-  // Backend returns:
-  // { success: true, data: ticket }
 
   return response.data.data;
 };

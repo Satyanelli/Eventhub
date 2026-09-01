@@ -1,42 +1,22 @@
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+
 import {
   getEventById,
   getTicketsByEvent,
+  type Event,
+  type Ticket,
 } from "../../api/event.api";
 
-interface Event {
-  _id: string;
-  title: string;
-  description: string;
-  category: string;
-  date: string;
-  time: string;
-  location: string;
-  image?: string | null;
-  status: "draft" | "published" | "cancelled";
-  organizer?: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-}
-
-interface Ticket {
-  _id: string;
-  event: string;
-  name: string;
-  price: number;
-  quantity: number;
-  availableQuantity: number;
-}
+import { createBooking } from "../../api/booking.api";
 
 function EventDetailsPage() {
   const { id } = useParams<{ id: string }>();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+
   const [selectedTickets, setSelectedTickets] = useState<
     Record<string, number>
   >({});
@@ -46,6 +26,13 @@ function EventDetailsPage() {
 
   const [error, setError] = useState("");
   const [ticketError, setTicketError] = useState("");
+
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState("");
+
+  // ==============================
+  // FETCH EVENT + TICKETS
+  // ==============================
 
   useEffect(() => {
     const fetchEventAndTickets = async () => {
@@ -57,16 +44,14 @@ function EventDetailsPage() {
       }
 
       try {
-        setError("");
-        setTicketError("");
-
         const eventData = await getEventById(id);
+
         setEvent(eventData);
+        setIsLoading(false);
 
-       const ticketResponse = await getTicketsByEvent(id);
+        const ticketResponse = await getTicketsByEvent(id);
 
-        setTickets(ticketResponse);
-
+        setTickets(ticketResponse.data || []);
       } catch (error) {
         console.error(
           "Failed to fetch event details:",
@@ -85,47 +70,58 @@ function EventDetailsPage() {
   }, [id]);
 
   // ==============================
-  // SELECT TICKET QUANTITY
+  // SELECT TICKET
+  // ==============================
+
+  const handleSelectTicket = (ticket: Ticket) => {
+    setSelectedTickets((current) => ({
+      ...current,
+      [ticket._id]: current[ticket._id] || 1,
+    }));
+  };
+
+  // ==============================
+  // INCREASE QUANTITY
   // ==============================
 
   const increaseQuantity = (ticket: Ticket) => {
-    setSelectedTickets((previous) => {
-      const currentQuantity = previous[ticket._id] || 0;
+    setSelectedTickets((current) => {
+      const currentQuantity = current[ticket._id] || 0;
 
       if (currentQuantity >= ticket.availableQuantity) {
-        return previous;
+        return current;
       }
 
       return {
-        ...previous,
+        ...current,
         [ticket._id]: currentQuantity + 1,
       };
     });
   };
 
-  const decreaseQuantity = (ticketId: string) => {
-    setSelectedTickets((previous) => {
-      const currentQuantity = previous[ticketId] || 0;
+  // ==============================
+  // DECREASE QUANTITY
+  // ==============================
 
-      if (currentQuantity <= 0) {
-        return previous;
+  const decreaseQuantity = (ticketId: string) => {
+    setSelectedTickets((current) => {
+      const currentQuantity = current[ticketId] || 0;
+
+      if (currentQuantity <= 1) {
+        const updated = { ...current };
+        delete updated[ticketId];
+        return updated;
       }
 
-      const updated = {
-        ...previous,
+      return {
+        ...current,
         [ticketId]: currentQuantity - 1,
       };
-
-      if (updated[ticketId] === 0) {
-        delete updated[ticketId];
-      }
-
-      return updated;
     });
   };
 
   // ==============================
-  // TOTAL PRICE
+  // TOTAL AMOUNT
   // ==============================
 
   const totalAmount = tickets.reduce((total, ticket) => {
@@ -134,10 +130,55 @@ function EventDetailsPage() {
     return total + ticket.price * quantity;
   }, 0);
 
-  const totalTickets = Object.values(selectedTickets).reduce(
-    (total, quantity) => total + quantity,
-    0
-  );
+  // ==============================
+  // BOOK TICKETS
+  // ==============================
+
+  const handleBooking = async () => {
+    if (!id) {
+      return;
+    }
+
+    const bookingTickets = Object.entries(
+      selectedTickets
+    ).map(([ticketId, quantity]) => ({
+      ticketId,
+      quantity,
+    }));
+
+    if (bookingTickets.length === 0) {
+      setTicketError("Please select at least one ticket");
+      return;
+    }
+
+    try {
+      setIsBooking(true);
+      setTicketError("");
+      setBookingSuccess("");
+
+      await createBooking(id, bookingTickets);
+
+      setBookingSuccess(
+        "Booking successful! Your tickets have been reserved."
+      );
+
+      setSelectedTickets({});
+
+      // Refresh ticket availability
+      const ticketResponse = await getTicketsByEvent(id);
+
+      setTickets(ticketResponse.data || []);
+    } catch (error: any) {
+      console.error("Booking failed:", error);
+
+      setTicketError(
+        error?.response?.data?.message ||
+          "Failed to create booking"
+      );
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   // ==============================
   // LOADING
@@ -154,15 +195,13 @@ function EventDetailsPage() {
   }
 
   // ==============================
-  // EVENT ERROR
+  // ERROR
   // ==============================
 
   if (error) {
     return (
       <section className="mx-auto max-w-5xl px-4 py-16">
-        <p className="text-red-500">
-          {error}
-        </p>
+        <p className="text-red-500">{error}</p>
 
         <Link
           to="/events"
@@ -197,8 +236,8 @@ function EventDetailsPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-
       {/* Back */}
+
       <Link
         to="/events"
         className="font-semibold text-brand-500 hover:text-brand-600"
@@ -206,12 +245,11 @@ function EventDetailsPage() {
         ← Back to Events
       </Link>
 
-      {/* ============================== */}
-      {/* EVENT DETAILS */}
-      {/* ============================== */}
+      {/* ==============================
+          EVENT DETAILS
+      ============================== */}
 
       <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
-
         {event.image && (
           <img
             src={event.image}
@@ -221,7 +259,6 @@ function EventDetailsPage() {
         )}
 
         <div className="p-8">
-
           <p className="text-sm font-semibold uppercase text-brand-500">
             {event.category}
           </p>
@@ -235,7 +272,6 @@ function EventDetailsPage() {
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
-
             <div className="rounded-xl bg-brand-50 p-4">
               <p className="text-sm text-text-secondary">
                 Date
@@ -265,12 +301,10 @@ function EventDetailsPage() {
                 {event.location}
               </p>
             </div>
-
           </div>
 
           {event.organizer && (
             <div className="mt-8 border-t border-brand-100 pt-6">
-
               <p className="text-sm text-text-secondary">
                 Organized by
               </p>
@@ -279,28 +313,35 @@ function EventDetailsPage() {
                 {event.organizer.firstName}{" "}
                 {event.organizer.lastName}
               </p>
-
             </div>
           )}
-
         </div>
       </div>
 
-      {/* ============================== */}
-      {/* TICKETS */}
-      {/* ============================== */}
+      {/* ==============================
+          TICKETS
+      ============================== */}
 
       <div className="mt-8">
-
         <h2 className="text-2xl font-bold text-brand-900">
           Tickets
         </h2>
 
         <p className="mt-2 text-text-secondary">
-          Choose your ticket quantity.
+          Choose your tickets.
         </p>
 
-        {/* Loading */}
+        {/* Booking success */}
+
+        {bookingSuccess && (
+          <div className="mt-6 rounded-xl bg-green-50 p-6">
+            <p className="font-semibold text-green-700">
+              {bookingSuccess}
+            </p>
+          </div>
+        )}
+
+        {/* Ticket loading */}
 
         {isTicketsLoading && (
           <div className="mt-6 rounded-xl bg-brand-50 p-6">
@@ -310,7 +351,7 @@ function EventDetailsPage() {
           </div>
         )}
 
-        {/* Error */}
+        {/* Ticket error */}
 
         {!isTicketsLoading && ticketError && (
           <div className="mt-6 rounded-xl bg-red-50 p-6">
@@ -326,7 +367,6 @@ function EventDetailsPage() {
           !ticketError &&
           tickets.length === 0 && (
             <div className="mt-6 rounded-xl bg-brand-50 p-8 text-center">
-
               <h3 className="text-lg font-semibold text-brand-900">
                 No tickets available
               </h3>
@@ -334,17 +374,14 @@ function EventDetailsPage() {
               <p className="mt-2 text-text-secondary">
                 Tickets for this event haven't been added yet.
               </p>
-
             </div>
           )}
 
         {/* Ticket list */}
 
         {!isTicketsLoading &&
-          !ticketError &&
           tickets.length > 0 && (
             <div className="mt-6 space-y-4">
-
               {tickets.map((ticket) => {
                 const selectedQuantity =
                   selectedTickets[ticket._id] || 0;
@@ -352,14 +389,8 @@ function EventDetailsPage() {
                 return (
                   <div
                     key={ticket._id}
-                    className="flex flex-col gap-4 rounded-2xl
-                    bg-white p-6 shadow-sm
-                    sm:flex-row sm:items-center
-                    sm:justify-between"
+                    className="flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"
                   >
-
-                    {/* Ticket information */}
-
                     <div>
                       <h3 className="text-xl font-bold text-brand-900">
                         {ticket.name}
@@ -370,117 +401,122 @@ function EventDetailsPage() {
                       </p>
 
                       <p className="mt-1 text-sm text-text-secondary">
-                        {ticket.availableQuantity} tickets available
+                        {ticket.availableQuantity}{" "}
+                        tickets available
                       </p>
                     </div>
 
-                    {/* Quantity controls */}
+                    {/* Selection controls */}
 
-                    {ticket.availableQuantity > 0 ? (
+                    {selectedQuantity === 0 ? (
+                      <button
+                        type="button"
+                        disabled={
+                          ticket.availableQuantity === 0
+                        }
+                        onClick={() =>
+                          handleSelectTicket(ticket)
+                        }
+                        className="rounded-lg bg-brand-500 px-6 py-3 font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {ticket.availableQuantity === 0
+                          ? "Sold Out"
+                          : "Select"}
+                      </button>
+                    ) : (
                       <div className="flex items-center gap-3">
-
                         <button
                           type="button"
                           onClick={() =>
                             decreaseQuantity(ticket._id)
                           }
-                          disabled={selectedQuantity === 0}
-                          className="flex h-10 w-10 items-center
-                          justify-center rounded-lg border
-                          border-brand-200 text-lg font-bold
-                          text-brand-600 hover:bg-brand-50
-                          disabled:cursor-not-allowed
-                          disabled:opacity-40"
+                          className="h-10 w-10 rounded-lg bg-brand-100 text-lg font-bold text-brand-900 hover:bg-brand-200"
                         >
                           −
                         </button>
 
-                        <span className="min-w-8 text-center text-lg font-semibold text-brand-900">
+                        <span className="w-8 text-center font-bold">
                           {selectedQuantity}
                         </span>
 
                         <button
                           type="button"
-                          onClick={() =>
-                            increaseQuantity(ticket)
-                          }
                           disabled={
                             selectedQuantity >=
                             ticket.availableQuantity
                           }
-                          className="flex h-10 w-10 items-center
-                          justify-center rounded-lg bg-brand-500
-                          text-lg font-bold text-white
-                          hover:bg-brand-600
-                          disabled:cursor-not-allowed
-                          disabled:opacity-40"
+                          onClick={() =>
+                            increaseQuantity(ticket)
+                          }
+                          className="h-10 w-10 rounded-lg bg-brand-100 text-lg font-bold text-brand-900 hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           +
                         </button>
-
                       </div>
-                    ) : (
-                      <span className="rounded-lg bg-red-50 px-4 py-2 font-semibold text-red-500">
-                        Sold Out
-                      </span>
                     )}
-
                   </div>
                 );
               })}
-
             </div>
           )}
 
-        {/* ============================== */}
-        {/* ORDER SUMMARY */}
-        {/* ============================== */}
+        {/* ==============================
+            BOOKING SUMMARY
+        ============================== */}
 
-        {!isTicketsLoading &&
-          !ticketError &&
-          totalTickets > 0 && (
-            <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+        {Object.keys(selectedTickets).length > 0 && (
+          <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-bold text-brand-900">
+              Booking Summary
+            </h3>
 
-              <div className="flex items-center justify-between">
+            <div className="mt-4 space-y-2">
+              {tickets.map((ticket) => {
+                const quantity =
+                  selectedTickets[ticket._id] || 0;
 
-                <div>
-                  <p className="text-sm text-text-secondary">
-                    Tickets selected
-                  </p>
+                if (quantity === 0) {
+                  return null;
+                }
 
-                  <p className="mt-1 text-xl font-bold text-brand-900">
-                    {totalTickets}
-                  </p>
-                </div>
+                return (
+                  <div
+                    key={ticket._id}
+                    className="flex justify-between"
+                  >
+                    <span>
+                      {ticket.name} × {quantity}
+                    </span>
 
-                <div className="text-right">
+                    <span className="font-semibold">
+                      ₹{ticket.price * quantity}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-                  <p className="text-sm text-text-secondary">
-                    Total amount
-                  </p>
+            <div className="mt-4 border-t border-brand-100 pt-4">
+              <div className="flex justify-between text-xl font-bold text-brand-900">
+                <span>Total</span>
 
-                  <p className="mt-1 text-2xl font-bold text-brand-500">
-                    ₹{totalAmount}
-                  </p>
-
-                </div>
-
+                <span>₹{totalAmount}</span>
               </div>
-
-              <button
-                type="button"
-                className="mt-6 w-full rounded-lg bg-brand-500
-                px-6 py-3 font-semibold text-white
-                hover:bg-brand-600"
-              >
-                Book / Checkout
-              </button>
-
             </div>
-          )}
 
+            <button
+              type="button"
+              onClick={handleBooking}
+              disabled={isBooking}
+              className="mt-6 w-full rounded-lg bg-brand-500 px-6 py-3 font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isBooking
+                ? "Booking..."
+                : "Book Tickets"}
+            </button>
+          </div>
+        )}
       </div>
-
     </section>
   );
 }

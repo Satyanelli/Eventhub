@@ -1,35 +1,65 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyEvents, type Event } from "../../api/event.api";
+import {
+  getMyEvents,
+  deleteEvent,
+  type Event,
+} from "../../api/event.api";
 
 function OrganizerDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+
+  const fetchMyEvents = async () => {
+    try {
+      setError("");
+
+      const data = await getMyEvents();
+      setEvents(data);
+    } catch (error) {
+      console.error("Failed to fetch organizer events:", error);
+      setError("Failed to load your events");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchMyEvents = async () => {
-      try {
-        const data = await getMyEvents();
-        setEvents(data);
-      } catch (error) {
-        console.error(
-          "Failed to fetch organizer events:",
-          error
-        );
-        setError("Failed to load your events");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchMyEvents();
   }, []);
 
-  // ==============================
-  // LOADING
-  // ==============================
+  const handleDelete = async (
+    eventId: string,
+    eventTitle: string
+  ) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${eventTitle}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeletingEventId(eventId);
+      setError("");
+
+      await deleteEvent(eventId);
+
+      setEvents((currentEvents) =>
+        currentEvents.filter(
+          (event) => event._id !== eventId
+        )
+      );
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      setError("Failed to delete the event");
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -41,26 +71,10 @@ function OrganizerDashboard() {
     );
   }
 
-  // ==============================
-  // ERROR
-  // ==============================
-
-  if (error) {
-    return (
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <p className="text-red-500">
-          {error}
-        </p>
-      </section>
-    );
-  }
-
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
 
-      {/* ============================== */}
-      {/* HEADER */}
-      {/* ============================== */}
+      {/* Header */}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
@@ -84,9 +98,15 @@ function OrganizerDashboard() {
 
       </div>
 
-      {/* ============================== */}
-      {/* EVENTS */}
-      {/* ============================== */}
+      {/* Error */}
+
+      {error && (
+        <div className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
+          {error}
+        </div>
+      )}
+
+      {/* Events */}
 
       {events.length === 0 ? (
 
@@ -139,7 +159,7 @@ function OrganizerDashboard() {
                 {event.description}
               </p>
 
-              {/* Event information */}
+              {/* Event Information */}
 
               <div className="mt-4 space-y-1 text-sm text-text-secondary">
 
@@ -169,7 +189,7 @@ function OrganizerDashboard() {
 
               <div className="mt-6 flex flex-wrap gap-3">
 
-                {/* View Event */}
+                {/* View */}
 
                 <Link
                   to={`/events/${event._id}`}
@@ -191,6 +211,41 @@ function OrganizerDashboard() {
                   Manage Tickets
                 </Link>
 
+                {/* Edit */}
+
+                <Link
+                  to={`/events/${event._id}/edit`}
+                  className="rounded-lg border border-brand-200 px-4 py-2
+                  text-sm font-semibold text-brand-600
+                  hover:bg-brand-50"
+                >
+                  Edit
+                </Link>
+
+                {/* Delete */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDelete(
+                      event._id,
+                      event.title
+                    )
+                  }
+                  disabled={
+                    deletingEventId === event._id
+                  }
+                  className="rounded-lg border border-red-200 px-4 py-2
+                  text-sm font-semibold text-red-600
+                  hover:bg-red-50
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50"
+                >
+                  {deletingEventId === event._id
+                    ? "Deleting..."
+                    : "Delete"}
+                </button>
+
               </div>
 
             </div>
@@ -206,4 +261,3 @@ function OrganizerDashboard() {
 }
 
 export default OrganizerDashboard;
-

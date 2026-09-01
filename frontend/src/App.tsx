@@ -1,3 +1,4 @@
+
 import { Routes, Route } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout";
@@ -9,6 +10,8 @@ import CreateEventPage from "./pages/events/CreateEventPage";
 import EventDetailsPage from "./pages/events/EventDetailsPage";
 import OrganizerDashboard from "./pages/organizer/OrganizerDashboard";
 import ManageTicketsPage from "./pages/tickets/ManageTicketsPage";
+import MyBookingsPage from "./pages/bookings/MyBookingsPage";
+import EditEventPage from "./pages/events/EditEventPage";
 
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
@@ -24,7 +27,16 @@ function App() {
 
   return (
     <Routes>
-        <Route path="/test" element={<h1 style={{ padding: "40px" }}>ROUTER WORKS</h1>} />
+      {/* Test route */}
+      <Route
+        path="/test"
+        element={
+          <h1 style={{ padding: "40px" }}>
+            ROUTER WORKS
+          </h1>
+        }
+      />
+
       <Route element={<MainLayout />}>
         {/* Home */}
         <Route path="/" element={<Home />} />
@@ -36,24 +48,41 @@ function App() {
         {/* Events */}
         <Route path="/events" element={<EventsPage />} />
 
-         <Route
-        path="/events/create"
-        element={<CreateEventPage />}/>
+        <Route
+          path="/events/create"
+          element={<CreateEventPage />}
+        />
 
         <Route
-        path="/events/:id"
-        element={<EventDetailsPage />}/> 
+          path="/events/:id"
+          element={<EventDetailsPage />}
+        />
 
+        {/* Organizer */}
         <Route
-        path="/organizer/dashboard"
-       element={<OrganizerDashboard />}/>
+          path="/organizer/dashboard"
+          element={<OrganizerDashboard />}
+        />
 
-       <Route
-       path="/events/:id/tickets"
-       element={<ManageTicketsPage />}/>
+        {/* Manage Tickets */}
+        <Route
+          path="/events/:id/tickets"
+          element={<ManageTicketsPage />}
+        />
+
+        {/* My Bookings */}
+        <Route
+          path="/my-bookings"
+          element={<MyBookingsPage />}
+        />
       </Route>
+
+      <Route
+  path="/events/:id/edit"
+  element={<EditEventPage />}/>
     </Routes>
   );
 }
 
 export default App;
+
