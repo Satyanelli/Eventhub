@@ -167,7 +167,7 @@ function EventDetailsPage() {
       // Refresh ticket availability
       const ticketResponse = await getTicketsByEvent(id);
 
-      setTickets(ticketResponse.data || []);
+      setTickets(ticketResponse.data|| []);
     } catch (error: any) {
       console.error("Booking failed:", error);
 

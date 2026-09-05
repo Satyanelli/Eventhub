@@ -90,13 +90,7 @@ function Navbar() {
           Updates
         </button>
 
-        {/* My Bookings */}
-        <Link
-          to="/my-bookings"
-          className="whitespace-nowrap text-brand-900 hover:text-brand-500"
-        >
-          My Bookings
-        </Link>
+        
 
         {/* Authentication */}
         <AuthButtons />
