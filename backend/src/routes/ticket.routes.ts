@@ -1,27 +1,42 @@
-
 import { Router } from "express";
 
 import {
   createTicket,
   getTicketsByEvent,
+  updateTicket,
 } from "../controllers/ticket.controller.js";
 
 import { protect } from "../middleware/auth.js";
 
 const router = Router();
 
-// Get tickets for an event
+// ==============================
+// GET TICKETS FOR AN EVENT
+// ==============================
+
 router.get(
   "/event/:eventId",
   getTicketsByEvent
 );
 
-// Create ticket - organizer only
+// ==============================
+// CREATE TICKET - ORGANIZER ONLY
+// ==============================
+
 router.post(
   "/event/:eventId",
   protect,
   createTicket
 );
 
-export default router;
+// ==============================
+// UPDATE TICKET - ORGANIZER ONLY
+// ==============================
 
+router.patch(
+  "/:ticketId",
+  protect,
+  updateTicket
+);
+
+export default router;

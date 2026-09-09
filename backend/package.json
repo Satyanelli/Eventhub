@@ -19,6 +19,9 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
+    "nodemailer": "^10.0.1",
+    "pdfkit": "^0.20.2",
+    "razorpay": "^2.9.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -28,6 +31,8 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.17.6",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3"

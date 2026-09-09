@@ -1,16 +1,24 @@
+
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBooking extends Document {
   user: mongoose.Types.ObjectId;
   event: mongoose.Types.ObjectId;
+
   tickets: {
     ticket: mongoose.Types.ObjectId;
     name: string;
     quantity: number;
     price: number;
   }[];
+
   totalAmount: number;
+
   status: "confirmed" | "cancelled";
+
+  // Razorpay payment details
+  paymentOrderId: string;
+  paymentId: string;
 }
 
 const bookingSchema = new Schema<IBooking>(
@@ -65,13 +73,28 @@ const bookingSchema = new Schema<IBooking>(
       enum: ["confirmed", "cancelled"],
       default: "confirmed",
     },
+
+    // ==============================
+    // RAZORPAY DETAILS
+    // ==============================
+
+    paymentOrderId: {
+      type: String,
+      required: true,
+    },
+
+    paymentId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
   },
-  {
-    timestamps: true,
-  }
+
+  { timestamps: true }
 );
 
 export const Booking = mongoose.model<IBooking>(
   "Booking",
   bookingSchema
 );
+

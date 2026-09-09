@@ -4,6 +4,7 @@ import {
   registerUser,
   loginUser,
   refreshAccessToken,
+  verifyEmail,
 } from "../services/auth.service.js";
 
 import User from "../models/User.js";
@@ -24,7 +25,7 @@ export async function register(
 
     res.status(201).json({
       success: true,
-      message: "Registration successful",
+      message: "Registration successful. Please check your email to verify your account.",
       data: {
         id: user._id,
         firstName: user.firstName,
@@ -73,6 +74,38 @@ export async function login(
         message: "Login successful",
         data: result.user,
       });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =========================
+// VERIFY EMAIL
+// =========================
+
+export async function verifyEmailController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { token } = req.query;
+
+    if (typeof token !== "string") {
+      throw new AppError("Verification token is required", 400);
+    }
+
+    const user = await verifyEmail(token);
+
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      data: {
+        id: user._id,
+        email: user.email,
+        isVerified: user.isVerified,
+      },
+    });
   } catch (error) {
     next(error);
   }

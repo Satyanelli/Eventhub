@@ -2,6 +2,7 @@
 import axios from "axios";
 
 const BOOKINGS_API_URL = "http://localhost:5000/api/bookings";
+const PAYMENT_API_URL = "http://localhost:5000/api/payment";
 
 // ==============================
 // TYPES
@@ -35,18 +36,29 @@ export interface Booking {
 }
 
 // ==============================
-// CREATE BOOKING
+// RAZORPAY PAYMENT TYPES
 // ==============================
 
-export const createBooking = async (
+export interface PaymentOrder {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+}
+
+// ==============================
+// CREATE RAZORPAY ORDER
+// ==============================
+
+export const createPaymentOrder = async (
   eventId: string,
   tickets: {
     ticketId: string;
     quantity: number;
   }[]
-): Promise<Booking> => {
+): Promise<PaymentOrder> => {
   const response = await axios.post(
-    BOOKINGS_API_URL,
+    `${PAYMENT_API_URL}/create-order`,
     {
       eventId,
       tickets,
@@ -57,6 +69,39 @@ export const createBooking = async (
   );
 
   return response.data.data;
+};
+
+// ==============================
+// VERIFY RAZORPAY PAYMENT
+// ==============================
+
+export const verifyPayment = async (
+  eventId: string,
+  tickets: {
+    ticketId: string;
+    quantity: number;
+  }[],
+  razorpayOrderId: string,
+  razorpayPaymentId: string,
+  razorpaySignature: string
+): Promise<Booking> => {
+  const response = await axios.post(
+    `${PAYMENT_API_URL}/verify`,
+    {
+      eventId,
+      tickets,
+
+      // Backend expects these exact Razorpay field names
+      razorpay_order_id: razorpayOrderId,
+      razorpay_payment_id: razorpayPaymentId,
+      razorpay_signature: razorpaySignature,
+    },
+    {
+      withCredentials: true,
+    }
+  );
+
+  return response.data.data.booking;
 };
 
 // ==============================

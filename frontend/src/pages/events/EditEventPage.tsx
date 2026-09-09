@@ -233,17 +233,64 @@ function EditEventPage() {
                 Category
               </label>
 
-              <input
+              <select
                 id="category"
                 name="category"
-                type="text"
                 value={formData.category}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-brand-100 px-4 py-3
+                className="w-full rounded-lg border border-brand-100 bg-white px-4 py-3
                 text-brand-900 outline-none
                 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-              />
+              >
+                <option value="">
+                  Select a category
+                </option>
+
+                <option value="Technology">
+                  Technology
+                </option>
+
+                <option value="Music">
+                  Music
+                </option>
+
+                <option value="Entertainment">
+                  Entertainment
+                </option>
+
+                <option value="Dance">
+                  Dance
+                </option>
+
+                <option value="Sports">
+                  Sports
+                </option>
+
+                <option value="Arts & Culture">
+                  Arts & Culture
+                </option>
+
+                <option value="Business">
+                  Business
+                </option>
+
+                <option value="Education">
+                  Education
+                </option>
+
+                <option value="Food & Drink">
+                  Food & Drink
+                </option>
+
+                <option value="Festivals">
+                  Festivals
+                </option>
+
+                <option value="Health & Wellness">
+                  Health & Wellness
+                </option>
+              </select>
             </div>
 
             {/* Date */}
@@ -306,6 +353,7 @@ function EditEventPage() {
                 value={formData.location}
                 onChange={handleChange}
                 required
+                placeholder="Event location"
                 className="w-full rounded-lg border border-brand-100 px-4 py-3
                 text-brand-900 outline-none
                 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"

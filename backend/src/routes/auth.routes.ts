@@ -12,6 +12,7 @@ import {
 import {
   register,
   login,
+  verifyEmailController,
   getMe,
   refreshToken,
   logout,
@@ -19,39 +20,16 @@ import {
 
 const router = Router();
 
-// ==================== PUBLIC ROUTES ====================
+router.post("/register", validate(registerSchema), register);
+router.post("/login", validate(loginSchema), login);
 
-router.post(
-  "/register",
-  validate(registerSchema),
-  register
-);
+// Email verification
+router.get("/verify-email", verifyEmailController);
 
-router.post(
-  "/login",
-  validate(loginSchema),
-  login
-);
+router.post("/refresh-token", refreshToken);
+router.post("/logout", logout);
 
-router.post(
-  "/refresh-token",
-  refreshToken
-);
-
-router.post(
-  "/logout",
-  logout
-);
-
-// ==================== PROTECTED ROUTES ====================
-
-router.get(
-  "/me",
-  protect,
-  getMe
-);
-
-// ==================== ORGANIZER ROUTES ====================
+router.get("/me", protect, getMe);
 
 router.get(
   "/organizer-test",

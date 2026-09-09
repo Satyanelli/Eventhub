@@ -38,6 +38,17 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Email verification fields
+    emailVerificationToken: {
+      type: String,
+      default: null,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      default: null,
+    },
+
     profileImage: {
       type: String,
       default: null,

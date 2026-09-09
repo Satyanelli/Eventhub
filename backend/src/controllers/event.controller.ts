@@ -132,9 +132,21 @@ export const updateEvent = async (req: Request, res: Response) => {
       });
     }
 
+    // Only allow these fields to be updated
+    const allowedUpdates = {
+      title: req.body.title,
+      description: req.body.description,
+      category: req.body.category,
+      date: req.body.date,
+      time: req.body.time,
+      location: req.body.location,
+      image: req.body.image,
+      status: req.body.status,
+    };
+
     const updatedEvent = await Event.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      allowedUpdates,
       {
         new: true,
         runValidators: true,

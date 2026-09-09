@@ -1,12 +1,15 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 
 import {
   getMyBookings,
   cancelBooking,
   type Booking,
 } from "../../api/booking.api";
+
+import { generateTicketPdf } from "../../utils/ticketPdf";
 
 function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -74,6 +77,34 @@ function MyBookingsPage() {
     } finally {
       setCancellingId(null);
     }
+  };
+
+  // ==============================
+  // DOWNLOAD TICKET PDF
+  // ==============================
+
+  const handleDownloadTicket = (booking: Booking) => {
+    const event =
+      typeof booking.event === "string"
+        ? null
+        : booking.event;
+
+    if (!event) {
+      setError(
+        "Event details are not available for this booking."
+      );
+      return;
+    }
+
+    generateTicketPdf({
+      bookingId: booking._id,
+      eventName: event.title,
+      date: new Date(event.date).toLocaleDateString(),
+      time: event.time,
+      location: event.location,
+      tickets: booking.tickets,
+      totalAmount: booking.totalAmount,
+    });
   };
 
   // ==============================
@@ -225,9 +256,37 @@ function MyBookingsPage() {
                   </div>
                 </div>
 
+                {/* QR CODE */}
+
+                {booking.status === "confirmed" && (
+                  <div className="mt-6 border-t border-brand-100 pt-6">
+                    <div className="flex flex-col items-center rounded-xl bg-gray-50 p-6">
+                      <h3 className="text-lg font-bold text-brand-900">
+                        Your Ticket QR Code
+                      </h3>
+
+                      <p className="mt-2 text-center text-sm text-text-secondary">
+                        Show this QR code at the event entrance.
+                      </p>
+
+                      <div className="mt-5 rounded-xl bg-white p-4 shadow-sm">
+                        <QRCodeSVG
+                          value={booking._id}
+                          size={220}
+                          level="H"
+                        />
+                      </div>
+
+                      <p className="mt-4 text-xs text-text-secondary">
+                        Booking ID: {booking._id}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Total */}
 
-                <div className="mt-6 flex items-center justify-between border-t border-brand-100 pt-6">
+                <div className="mt-6 flex flex-col gap-4 border-t border-brand-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-text-secondary">
                       Total Amount
@@ -238,26 +297,45 @@ function MyBookingsPage() {
                     </p>
                   </div>
 
-                  {/* Cancel */}
+                  <div className="flex flex-wrap gap-3">
+                    {/* Download PDF */}
 
-                  {booking.status === "confirmed" && (
-                    <button
-                      type="button"
-                      disabled={
-                        cancellingId === booking._id
-                      }
-                      onClick={() =>
-                        handleCancelBooking(
-                          booking._id
-                        )
-                      }
-                      className="rounded-lg border border-red-200 px-4 py-2 font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {cancellingId === booking._id
-                        ? "Cancelling..."
-                        : "Cancel Booking"}
-                    </button>
-                  )}
+                    {booking.status === "confirmed" &&
+                      event && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleDownloadTicket(
+                              booking
+                            )
+                          }
+                          className="rounded-lg bg-brand-500 px-4 py-2 font-semibold text-white hover:bg-brand-600"
+                        >
+                          📄 Download Ticket PDF
+                        </button>
+                      )}
+
+                    {/* Cancel */}
+
+                    {booking.status === "confirmed" && (
+                      <button
+                        type="button"
+                        disabled={
+                          cancellingId === booking._id
+                        }
+                        onClick={() =>
+                          handleCancelBooking(
+                            booking._id
+                          )
+                        }
+                        className="rounded-lg border border-red-200 px-4 py-2 font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {cancellingId === booking._id
+                          ? "Cancelling..."
+                          : "Cancel Booking"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

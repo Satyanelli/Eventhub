@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 const EVENTS_API_URL = "http://localhost:5000/api/events";
@@ -53,6 +52,12 @@ export interface Ticket {
   price: number;
   quantity: number;
   availableQuantity: number;
+}
+
+export interface TicketStats {
+  tickets: Ticket[];
+  totalTickets: number;
+  soldTickets: number;
 }
 
 // ==============================
@@ -156,7 +161,7 @@ export const getTicketsByEvent = async (
   eventId: string
 ): Promise<{
   success: boolean;
-  data: Ticket[];
+  data: TicketStats;
 }> => {
   const response = await axios.get(
     `${TICKETS_API_URL}/event/${eventId}`
@@ -188,3 +193,25 @@ export const createTicket = async (
   return response.data.data;
 };
 
+// ==============================
+// UPDATE TICKET
+// ==============================
+
+export const updateTicket = async (
+  ticketId: string,
+  ticketData: {
+    name?: string;
+    price?: number;
+    quantity?: number;
+  }
+): Promise<Ticket> => {
+  const response = await axios.patch(
+    `${TICKETS_API_URL}/${ticketId}`,
+    ticketData,
+    {
+      withCredentials: true,
+    }
+  );
+
+  return response.data.data;
+};

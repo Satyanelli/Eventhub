@@ -7,6 +7,7 @@ import eventRoutes from "./routes/event.routes.js";
 import errorHandler from "./middleware/errorHandler.js";
 import ticketRoutes from "./routes/ticket.routes.js";
 import bookingRoutes from "./routes/booking.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Health check
 app.get("/", (req, res) => {

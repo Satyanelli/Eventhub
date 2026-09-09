@@ -10,23 +10,44 @@ import {
 } from "../controllers/event.controller.js";
 
 import { protect } from "../middleware/auth.js";
+import { authorize } from "../middleware/authorize.js";
 
 const router = Router();
 
 // Public routes
 router.get("/", getEvents);
 
-// Protected organizer route
-router.get("/my-events", protect, getMyEvents);
+// Organizer only
+router.get(
+  "/my-events",
+  protect,
+  authorize("organizer"),
+  getMyEvents
+);
 
 // Public single event
 router.get("/:id", getEventById);
 
-// Protected routes
-router.post("/", protect, createEvent);
+// Organizer only
+router.post(
+  "/",
+  protect,
+  authorize("organizer"),
+  createEvent
+);
 
-router.patch("/:id", protect, updateEvent);
+router.patch(
+  "/:id",
+  protect,
+  authorize("organizer"),
+  updateEvent
+);
 
-router.delete("/:id", protect, deleteEvent);
+router.delete(
+  "/:id",
+  protect,
+  authorize("organizer"),
+  deleteEvent
+);
 
 export default router;

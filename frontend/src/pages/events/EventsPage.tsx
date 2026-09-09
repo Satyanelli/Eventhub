@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getEvents } from "../../api/event.api";
@@ -21,6 +22,7 @@ function EventsPage() {
   const [searchParams] = useSearchParams();
 
   const searchTerm = searchParams.get("search") || "";
+  const category = searchParams.get("category") || "";
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -46,17 +48,20 @@ function EventsPage() {
 
   const filteredEvents = events.filter((event) => {
     const search = searchTerm.toLowerCase().trim();
+    const selectedCategory = category.toLowerCase().trim();
 
-    if (!search) {
-      return true;
-    }
-
-    return (
+    const matchesSearch =
+      !search ||
       event.title.toLowerCase().includes(search) ||
       event.description.toLowerCase().includes(search) ||
       event.category.toLowerCase().includes(search) ||
-      event.location.toLowerCase().includes(search)
-    );
+      event.location.toLowerCase().includes(search);
+
+    const matchesCategory =
+      !selectedCategory ||
+      event.category.toLowerCase() === selectedCategory;
+
+    return matchesSearch && matchesCategory;
   });
 
   // ==============================
@@ -98,7 +103,9 @@ function EventsPage() {
         </h1>
 
         <p className="mt-2 text-text-secondary">
-          {searchTerm
+          {category
+            ? `Events in "${category}"`
+            : searchTerm
             ? `Search results for "${searchTerm}"`
             : "Find events worth experiencing."}
         </p>
@@ -149,7 +156,7 @@ function EventsPage() {
         /* Events */
 
         <>
-          {searchTerm && (
+          {(searchTerm || category) && (
             <p className="mt-6 text-sm text-text-secondary">
               {filteredEvents.length} event
               {filteredEvents.length !== 1 ? "s" : ""} found
@@ -223,3 +230,4 @@ function EventsPage() {
 }
 
 export default EventsPage;
+

@@ -10,6 +10,7 @@ export function protect(
   next: NextFunction
 ) {
   try {
+    console.log("PAYMENT/PROTECT COOKIE:", req.cookies.accessToken);
     const token = req.cookies.accessToken;
 
     if (!token) {
@@ -21,8 +22,9 @@ export function protect(
     if (!secret) {
       throw new Error("JWT_ACCESS_SECRET is not defined");
     }
-
     const decoded = jwt.verify(token, secret) as AuthUser;
+
+    console.log("PAYMENT AUTH USER:", decoded);
 
     if (!decoded.userId || !decoded.role) {
       throw new AppError("Invalid access token", 401);

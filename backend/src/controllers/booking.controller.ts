@@ -14,8 +14,13 @@ export const createBooking = async (
   req: Request,
   res: Response
 ) => {
+  let session: mongoose.ClientSession | null = null;
+
   try {
-    // User must be logged in
+    // ==============================
+    // USER MUST BE LOGGED IN
+    // ==============================
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -52,12 +57,21 @@ export const createBooking = async (
     }
 
     // ==============================
+    // START TRANSACTION
+    // ==============================
+
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    // ==============================
     // FIND EVENT
     // ==============================
 
-    const event = await Event.findById(eventId);
+    const event = await Event.findById(eventId).session(session);
 
     if (!event) {
+      await session.abortTransaction();
+
       return res.status(404).json({
         success: false,
         message: "Event not found",
@@ -65,6 +79,8 @@ export const createBooking = async (
     }
 
     if (event.status !== "published") {
+      await session.abortTransaction();
+
       return res.status(400).json({
         success: false,
         message: "This event is not available for booking",
@@ -72,7 +88,8 @@ export const createBooking = async (
     }
 
     // ==============================
-    // VALIDATE TICKETS & AVAILABILITY
+    // VALIDATE TICKETS & REDUCE
+    // AVAILABLE QUANTITY ATOMICALLY
     // ==============================
 
     const bookingTickets = [];
@@ -81,47 +98,86 @@ export const createBooking = async (
     for (const selectedTicket of tickets) {
       const { ticketId, quantity } = selectedTicket;
 
+      // Validate ticket ID
       if (
         !ticketId ||
         typeof ticketId !== "string" ||
         !mongoose.Types.ObjectId.isValid(ticketId)
       ) {
+        await session.abortTransaction();
+
         return res.status(400).json({
           success: false,
           message: "Invalid ticket ID",
         });
       }
 
+      // Validate quantity
       if (
         typeof quantity !== "number" ||
         !Number.isInteger(quantity) ||
         quantity < 1
       ) {
+        await session.abortTransaction();
+
         return res.status(400).json({
           success: false,
           message: "Ticket quantity must be at least 1",
         });
       }
 
+      // Find ticket first so we can get its name and price
       const ticket = await Ticket.findOne({
         _id: ticketId,
         event: eventId,
-      });
+      }).session(session);
 
       if (!ticket) {
+        await session.abortTransaction();
+
         return res.status(404).json({
           success: false,
           message: "Ticket not found for this event",
         });
       }
 
-      // Prevent overbooking
-      if (ticket.availableQuantity < quantity) {
+      // ==============================
+      // ATOMIC AVAILABILITY CHECK
+      // + DECREMENT
+      // ==============================
+
+      const updatedTicket = await Ticket.findOneAndUpdate(
+        {
+          _id: ticketId,
+          event: eventId,
+          availableQuantity: {
+            $gte: quantity,
+          },
+        },
+        {
+          $inc: {
+            availableQuantity: -quantity,
+          },
+        },
+        {
+          new: true,
+          session,
+        }
+      );
+
+      // If no document was updated, there were not enough tickets
+      if (!updatedTicket) {
+        await session.abortTransaction();
+
         return res.status(400).json({
           success: false,
           message: `Only ${ticket.availableQuantity} ${ticket.name} tickets are available`,
         });
       }
+
+      // ==============================
+      // CALCULATE TOTAL
+      // ==============================
 
       const ticketTotal = ticket.price * quantity;
 
@@ -136,31 +192,27 @@ export const createBooking = async (
     }
 
     // ==============================
-    // REDUCE AVAILABLE TICKETS
+    // CREATE BOOKING INSIDE
+    // TRANSACTION
     // ==============================
 
-    for (const selectedTicket of tickets) {
-      await Ticket.findByIdAndUpdate(
-        selectedTicket.ticketId,
-        {
-          $inc: {
-            availableQuantity: -selectedTicket.quantity,
-          },
-        }
-      );
-    }
-
-    // ==============================
-    // CREATE BOOKING
-    // ==============================
-
-    const booking = await Booking.create({
+    const booking = new Booking({
       user: req.user.userId,
       event: eventId,
       tickets: bookingTickets,
       totalAmount,
       status: "confirmed",
     });
+
+    await booking.save({
+      session,
+    });
+
+    // ==============================
+    // COMMIT TRANSACTION
+    // ==============================
+
+    await session.commitTransaction();
 
     // ==============================
     // RESPONSE
@@ -174,10 +226,27 @@ export const createBooking = async (
   } catch (error) {
     console.error("Create booking error:", error);
 
+    // Rollback all ticket changes if anything fails
+    if (session) {
+      try {
+        await session.abortTransaction();
+      } catch (abortError) {
+        console.error(
+          "Transaction rollback error:",
+          abortError
+        );
+      }
+    }
+
     return res.status(500).json({
       success: false,
       message: "Failed to create booking",
     });
+  } finally {
+    // Always close the session
+    if (session) {
+      await session.endSession();
+    }
   }
 };
 

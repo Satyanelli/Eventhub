@@ -9,7 +9,58 @@ import {
   type Ticket,
 } from "../../api/event.api";
 
-import { createBooking } from "../../api/booking.api";
+import {
+  createPaymentOrder,
+  verifyPayment,
+} from "../../api/booking.api";
+
+// ==============================
+// RAZORPAY TYPES
+// ==============================
+
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+
+  handler: (response: RazorpayResponse) => void;
+
+  prefill?: {
+    name?: string;
+    email?: string;
+  };
+
+  theme?: {
+    color?: string;
+  };
+
+  modal?: {
+    ondismiss?: () => void;
+  };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+interface RazorpayConstructor {
+  new (options: RazorpayOptions): RazorpayInstance;
+}
+
+declare global {
+  interface Window {
+    Razorpay: RazorpayConstructor;
+  }
+}
 
 function EventDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +80,35 @@ function EventDetailsPage() {
 
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState("");
+
+  // ==============================
+  // LOAD RAZORPAY CHECKOUT SCRIPT
+  // ==============================
+
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      // Already loaded
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement("script");
+
+      script.src =
+        "https://checkout.razorpay.com/v1/checkout.js";
+
+      script.onload = () => {
+        resolve(true);
+      };
+
+      script.onerror = () => {
+        resolve(false);
+      };
+
+      document.body.appendChild(script);
+    });
+  };
 
   // ==============================
   // FETCH EVENT + TICKETS
@@ -51,7 +131,7 @@ function EventDetailsPage() {
 
         const ticketResponse = await getTicketsByEvent(id);
 
-        setTickets(ticketResponse.data || []);
+        setTickets(ticketResponse.data?.tickets || []);
       } catch (error) {
         console.error(
           "Failed to fetch event details:",
@@ -109,7 +189,9 @@ function EventDetailsPage() {
 
       if (currentQuantity <= 1) {
         const updated = { ...current };
+
         delete updated[ticketId];
+
         return updated;
       }
 
@@ -124,14 +206,18 @@ function EventDetailsPage() {
   // TOTAL AMOUNT
   // ==============================
 
-  const totalAmount = tickets.reduce((total, ticket) => {
-    const quantity = selectedTickets[ticket._id] || 0;
+  const totalAmount = tickets.reduce(
+    (total, ticket) => {
+      const quantity =
+        selectedTickets[ticket._id] || 0;
 
-    return total + ticket.price * quantity;
-  }, 0);
+      return total + ticket.price * quantity;
+    },
+    0
+  );
 
   // ==============================
-  // BOOK TICKETS
+  // HANDLE BOOKING + PAYMENT
   // ==============================
 
   const handleBooking = async () => {
@@ -147,7 +233,9 @@ function EventDetailsPage() {
     }));
 
     if (bookingTickets.length === 0) {
-      setTicketError("Please select at least one ticket");
+      setTicketError(
+        "Please select at least one ticket"
+      );
       return;
     }
 
@@ -156,26 +244,129 @@ function EventDetailsPage() {
       setTicketError("");
       setBookingSuccess("");
 
-      await createBooking(id, bookingTickets);
+      // ==============================
+      // LOAD RAZORPAY
+      // ==============================
 
-      setBookingSuccess(
-        "Booking successful! Your tickets have been reserved."
+      const razorpayLoaded =
+        await loadRazorpayScript();
+
+      if (!razorpayLoaded) {
+        setTicketError(
+          "Failed to load Razorpay. Please check your internet connection."
+        );
+        return;
+      }
+
+      // ==============================
+      // CREATE PAYMENT ORDER
+      // ==============================
+
+      const paymentOrder =
+        await createPaymentOrder(
+          id,
+          bookingTickets
+        );
+
+      // ==============================
+      // OPEN RAZORPAY CHECKOUT
+      // ==============================
+
+      const options: RazorpayOptions = {
+        key: paymentOrder.keyId,
+
+        amount: paymentOrder.amount,
+
+        currency: paymentOrder.currency,
+
+        name: "EventHub",
+
+        description: `Tickets for ${event?.title || "Event"}`,
+
+        order_id: paymentOrder.orderId,
+
+        handler: async (
+          response: RazorpayResponse
+        ) => {
+          try {
+            setTicketError("");
+            setBookingSuccess("");
+
+            // ==============================
+            // VERIFY PAYMENT
+            // ==============================
+
+            await verifyPayment(
+              id,
+              bookingTickets,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+
+            // ==============================
+            // PAYMENT SUCCESS
+            // ==============================
+
+            setBookingSuccess(
+              "Payment successful! Your booking has been confirmed."
+            );
+
+            setSelectedTickets({});
+
+            // Refresh ticket availability
+            const ticketResponse =
+              await getTicketsByEvent(id);
+
+            setTickets(
+              ticketResponse.data?.tickets || []
+            );
+          } catch (error: any) {
+            console.error(
+              "Payment verification failed:",
+              error
+            );
+
+            setTicketError(
+              error?.response?.data?.message ||
+                "Payment verification failed. Please contact support if money was deducted."
+            );
+          } finally {
+            setIsBooking(false);
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            setIsBooking(false);
+
+            setTicketError(
+              "Payment was cancelled."
+            );
+          },
+        },
+
+        theme: {
+          color: "#6366f1",
+        },
+      };
+
+      const razorpay = new window.Razorpay(
+        options
       );
 
-      setSelectedTickets({});
-
-      // Refresh ticket availability
-      const ticketResponse = await getTicketsByEvent(id);
-
-      setTickets(ticketResponse.data|| []);
+      razorpay.open();
     } catch (error: any) {
-      console.error("Booking failed:", error);
+      console.error(
+        "Payment order creation failed:",
+        error
+      );
 
       setTicketError(
         error?.response?.data?.message ||
-          "Failed to create booking"
+          "Failed to start payment"
       );
-    } finally {
+
       setIsBooking(false);
     }
   };
@@ -448,7 +639,7 @@ function EventDetailsPage() {
                           onClick={() =>
                             increaseQuantity(ticket)
                           }
-                          className="h-10 w-10 rounded-lg bg-brand-100 text-lg font-bold text-brand-900 hover:bg-brand-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="h-10 w-10 rounded-lg bg-brand-100 text-lg font-bold text-brand-900 hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           +
                         </button>
@@ -511,8 +702,8 @@ function EventDetailsPage() {
               className="mt-6 w-full rounded-lg bg-brand-500 px-6 py-3 font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isBooking
-                ? "Booking..."
-                : "Book Tickets"}
+                ? "Processing..."
+                : "Pay & Book Tickets"}
             </button>
           </div>
         )}
