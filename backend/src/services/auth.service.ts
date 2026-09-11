@@ -190,6 +190,138 @@ export async function verifyEmail(token: string) {
 }
 
 // =========================
+// FORGOT PASSWORD
+// =========================
+
+export async function forgotPassword(email: string) {
+  const user = await User.findOne({ email });
+
+  // Don't reveal whether an account exists
+  if (!user) {
+    return;
+  }
+
+  // Generate secure reset token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash token before storing it in database
+  const hashedResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  // Token expires after 15 minutes
+  const resetExpires = new Date(
+    Date.now() + 15 * 60 * 1000
+  );
+
+  user.passwordResetToken = hashedResetToken;
+  user.passwordResetExpires = resetExpires;
+
+  await user.save();
+
+  const resetUrl =
+    `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+
+  await sendEmail(
+    user.email,
+    "Reset your EventHub password",
+    `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Password Reset Request 🔐</h2>
+
+        <p>
+          Hello ${user.firstName},
+        </p>
+
+        <p>
+          We received a request to reset your EventHub password.
+        </p>
+
+        <p>
+          Click the button below to create a new password:
+        </p>
+
+        <p>
+          <a
+            href="${resetUrl}"
+            style="
+              display: inline-block;
+              padding: 12px 20px;
+              background-color: #2563eb;
+              color: white;
+              text-decoration: none;
+              border-radius: 6px;
+            "
+          >
+            Reset Password
+          </a>
+        </p>
+
+        <p>
+          This password reset link will expire in
+          <strong>15 minutes</strong>.
+        </p>
+
+        <p>
+          If you did not request a password reset,
+          you can safely ignore this email.
+        </p>
+
+        <p>
+          Thanks,<br />
+          EventHub Team
+        </p>
+      </div>
+    `
+  );
+}
+
+// =========================
+// RESET PASSWORD
+// =========================
+
+export async function resetPassword(
+  token: string,
+  newPassword: string
+) {
+  if (!token) {
+    throw new AppError(
+      "Password reset token is required",
+      400
+    );
+  }
+
+  const hashedResetToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: hashedResetToken,
+    passwordResetExpires: {
+      $gt: new Date(),
+    },
+  }).select("+password");
+
+  if (!user) {
+    throw new AppError(
+      "Invalid or expired password reset link",
+      400
+    );
+  }
+
+  // Hash new password
+  user.password = await bcrypt.hash(newPassword, 12);
+
+  // Invalidate reset token
+  user.passwordResetToken = null;
+  user.passwordResetExpires = null;
+
+  await user.save();
+}
+
+// =========================
 // REFRESH ACCESS TOKEN
 // =========================
 

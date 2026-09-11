@@ -5,6 +5,8 @@ import {
   loginUser,
   refreshAccessToken,
   verifyEmail,
+  forgotPassword,
+  resetPassword,
 } from "../services/auth.service.js";
 
 import User from "../models/User.js";
@@ -25,7 +27,8 @@ export async function register(
 
     res.status(201).json({
       success: true,
-      message: "Registration successful. Please check your email to verify your account.",
+      message:
+        "Registration successful. Please check your email to verify your account.",
       data: {
         id: user._id,
         firstName: user.firstName,
@@ -92,7 +95,10 @@ export async function verifyEmailController(
     const { token } = req.query;
 
     if (typeof token !== "string") {
-      throw new AppError("Verification token is required", 400);
+      throw new AppError(
+        "Verification token is required",
+        400
+      );
     }
 
     const user = await verifyEmail(token);
@@ -105,6 +111,54 @@ export async function verifyEmailController(
         email: user.email,
         isVerified: user.isVerified,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =========================
+// FORGOT PASSWORD
+// =========================
+
+export async function forgotPasswordController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { email } = req.body;
+
+    await forgotPassword(email);
+
+    res.status(200).json({
+      success: true,
+      message:
+        "If an account exists with that email, a password reset link has been sent.",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// =========================
+// RESET PASSWORD
+// =========================
+
+export async function resetPasswordController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { token, password } = req.body;
+
+    await resetPassword(token, password);
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Password reset successfully. You can now log in.",
     });
   } catch (error) {
     next(error);
@@ -125,7 +179,9 @@ export async function getMe(
       throw new AppError("Not authenticated", 401);
     }
 
-    const user = await User.findById(req.user.userId).select("-password");
+    const user = await User.findById(req.user.userId).select(
+      "-password"
+    );
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -153,7 +209,10 @@ export async function refreshToken(
     const token = req.cookies.refreshToken;
 
     if (!token) {
-      throw new AppError("Refresh token is required", 401);
+      throw new AppError(
+        "Refresh token is required",
+        401
+      );
     }
 
     const result = await refreshAccessToken(token);

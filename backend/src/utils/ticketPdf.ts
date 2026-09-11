@@ -1,5 +1,5 @@
-
 import PDFDocument from "pdfkit";
+import QRCode from "qrcode";
 
 interface TicketPdfData {
   bookingId: string;
@@ -15,9 +15,22 @@ interface TicketPdfData {
   totalAmount: number;
 }
 
-export function generateTicketPdf(
+export async function generateTicketPdf(
   data: TicketPdfData
 ): Promise<Buffer> {
+  // Generate QR code
+  const qrData = JSON.stringify({
+    bookingId: data.bookingId,
+    eventName: data.eventName,
+  });
+
+  const qrBuffer = await QRCode.toBuffer(qrData, {
+    type: "png",
+    width: 180,
+    margin: 2,
+  });
+  console.log("✅ QR CODE GENERATED:", qrBuffer.length);
+
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: "A4",
@@ -115,6 +128,7 @@ export function generateTicketPdf(
 
     doc
       .fontSize(12)
+      .font("Helvetica-Bold")
       .text("Booking Information");
 
     doc.moveDown(0.5);
@@ -124,7 +138,34 @@ export function generateTicketPdf(
       .text(`Booking ID: ${data.bookingId}`)
       .text("Payment Status: Confirmed");
 
-    doc.moveDown(2);
+    doc.moveDown(1);
+
+    // ==============================
+    // QR CODE
+    // ==============================
+
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .text("Ticket QR Code");
+
+    doc.moveDown(0.5);
+
+    doc.image(qrBuffer, {
+      width: 180,
+      height: 180,
+    });
+
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .text(
+        "Please show this QR code at the event entrance."
+      );
+
+    doc.moveDown(1);
 
     // ==============================
     // FOOTER
@@ -132,15 +173,11 @@ export function generateTicketPdf(
 
     doc
       .fontSize(10)
+      .font("Helvetica")
       .text(
         "Thank you for booking with EventHub!"
       );
 
-    doc.text(
-      "Please show your ticket QR code at the event entrance."
-    );
-
     doc.end();
   });
 }
-

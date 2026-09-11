@@ -44,3 +44,35 @@ export const logoutUser = async () => {
 
   return response.data;
 };
+
+// =========================
+// FORGOT PASSWORD
+// =========================
+
+export const forgotPassword = async (email: string) => {
+  const response = await axios.post(
+    `${API_URL}/forgot-password`,
+    { email }
+  );
+
+  return response.data;
+};
+
+// =========================
+// RESET PASSWORD
+// =========================
+
+export const resetPassword = async (
+  token: string,
+  password: string
+) => {
+  const response = await axios.post(
+    `${API_URL}/reset-password`,
+    {
+      token,
+      password,
+    }
+  );
+
+  return response.data;
+};

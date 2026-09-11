@@ -1,7 +1,9 @@
 import { Router } from "express";
 
 import validate from "../middleware/validate.js";
+
 import { protect } from "../middleware/auth.js";
+
 import { authorize } from "../middleware/authorize.js";
 
 import {
@@ -16,20 +18,67 @@ import {
   getMe,
   refreshToken,
   logout,
+  forgotPasswordController,
+  resetPasswordController,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
 
-router.post("/register", validate(registerSchema), register);
-router.post("/login", validate(loginSchema), login);
+// =========================
+// PUBLIC AUTH ROUTES
+// =========================
+
+router.post(
+  "/register",
+  validate(registerSchema),
+  register
+);
+
+router.post(
+  "/login",
+  validate(loginSchema),
+  login
+);
+
+// Forgot password
+router.post(
+  "/forgot-password",
+  forgotPasswordController
+);
+
+// Reset password
+router.post(
+  "/reset-password",
+  resetPasswordController
+);
 
 // Email verification
-router.get("/verify-email", verifyEmailController);
+router.get(
+  "/verify-email",
+  verifyEmailController
+);
 
-router.post("/refresh-token", refreshToken);
-router.post("/logout", logout);
+// Refresh token
+router.post(
+  "/refresh-token",
+  refreshToken
+);
 
-router.get("/me", protect, getMe);
+// Logout
+router.post(
+  "/logout",
+  logout
+);
+
+// =========================
+// PROTECTED ROUTES
+// =========================
+
+router.get(
+  "/me",
+  protect,
+  getMe
+);
 
 router.get(
   "/organizer-test",

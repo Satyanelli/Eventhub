@@ -1,5 +1,5 @@
-
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 
 interface TicketPdfData {
   bookingId: string;
@@ -15,8 +15,20 @@ interface TicketPdfData {
   totalAmount: number;
 }
 
-export function generateTicketPdf(data: TicketPdfData) {
+export async function generateTicketPdf(data: TicketPdfData) {
   const pdf = new jsPDF();
+
+  // Generate QR code data
+  const qrData = JSON.stringify({
+    bookingId: data.bookingId,
+    eventName: data.eventName,
+  });
+
+  // Convert QR code to image
+  const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+    width: 180,
+    margin: 2,
+  });
 
   // Header
   pdf.setFontSize(24);
@@ -88,21 +100,40 @@ export function generateTicketPdf(data: TicketPdfData) {
     y
   );
 
-  // Footer
-  y += 30;
+  // QR Code
+  y += 20;
 
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+
+  pdf.text("Ticket QR Code", 20, y);
+
+  y += 8;
+
+  pdf.addImage(
+    qrCodeDataUrl,
+    "PNG",
+    20,
+    y,
+    50,
+    50
+  );
+
+  // QR instruction
+  pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
 
   pdf.text(
-    "Thank you for booking with EventHub!",
+    "Please show this QR code at the event entrance.",
     20,
-    y
+    y + 58
   );
 
+  // Footer
   pdf.text(
-    "Please show your ticket QR code at the event entrance.",
+    "Thank you for booking with EventHub!",
     20,
-    y + 8
+    y + 68
   );
 
   // Download
@@ -110,4 +141,3 @@ export function generateTicketPdf(data: TicketPdfData) {
     `EventHub-Ticket-${data.bookingId}.pdf`
   );
 }
-

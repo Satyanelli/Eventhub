@@ -1,95 +1,95 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "../../api/auth.api";
-
-import {
-  loginSchema,
-  type LoginFormData,
-} from "../../validators/auth.validator";
-
-
 import { useDispatch } from "react-redux";
-import type { AppDispatch } from "../../store/store";
-import { setCredentials } from "../../store/slices/authSlice";
 
+import { loginUser } from "../../api/auth.api";
+import { setCredentials } from "../../store/slices/authSlice";
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
-    password: "",
-  });
+  const dispatch = useDispatch();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof LoginFormData, string>>
-  >({});
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    general?: string;
+  }>({});
 
-const dispatch = useDispatch<AppDispatch>();
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit: React.SubmitEventHandler<HTMLFormElement> = async (
-    event
+  const handleSubmit = async (
+    event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
 
-    const result = loginSchema.safeParse(formData);
+    setErrors({});
 
-    if (!result.success) {
-      const fieldErrors: Partial<Record<keyof LoginFormData, string>> = {};
-
-      result.error.issues.forEach((issue) => {
-        const field = issue.path[0] as keyof LoginFormData;
-
-        if (!fieldErrors[field]) {
-          fieldErrors[field] = issue.message;
-        }
+    // Basic validation
+    if (!email.trim()) {
+      setErrors({
+        email: "Please enter your email address.",
       });
-
-      setErrors(fieldErrors);
       return;
     }
 
-    setErrors({});
+    if (!password.trim()) {
+      setErrors({
+        password: "Please enter your password.",
+      });
+      return;
+    }
 
-try {
-  const response = await loginUser(result.data);
+    try {
+      setLoading(true);
 
-  dispatch(setCredentials(response.data));
+      const response = await loginUser({
+        email: email.trim(),
+        password,
+      });
 
-  console.log("Login successful:", response);
+      dispatch(
+        setCredentials( response.data.user,
+        )
+      );
 
-  navigate("/");
-} catch (error) {
-  console.error("Login failed:", error);
-}
+      navigate("/");
+    } catch (error: any) {
+      console.error("Login failed:", error);
+
+      setErrors({
+        general:
+          error.response?.data?.message ||
+          "Login failed. Please check your email and password.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <section className="min-h-[calc(100vh-64px)] bg-brand-50 px-6 py-12">
       <div className="mx-auto max-w-md">
         <div className="rounded-2xl bg-white p-8 shadow-sm">
+
+          {/* Header */}
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold text-brand-900">
-              Welcome back
+              Welcome Back
             </h1>
 
             <p className="mt-2 text-brand-600">
-              Sign in to continue to EventHub
+              Login to your EventHub account
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+
             {/* Email */}
             <div>
               <label
@@ -103,8 +103,8 @@ try {
                 id="email"
                 name="email"
                 type="email"
-                value={formData.email}
-                onChange={handleChange}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your email"
                 className="w-full rounded-lg border border-brand-100 px-4 py-3
                            text-brand-900 outline-none
@@ -112,7 +112,7 @@ try {
               />
 
               {errors.email && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm text-red-600">
                   {errors.email}
                 </p>
               )}
@@ -132,44 +132,63 @@ try {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleChange}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   placeholder="Enter your password"
-                  className="w-full rounded-lg border border-brand-100 px-4 py-3 pr-12
-                             text-brand-900 outline-none
+                  className="w-full rounded-lg border border-brand-100 px-4 py-3
+                             pr-20 text-brand-900 outline-none
                              focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                 />
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowPassword((previous) => !previous)
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm
-                             font-semibold text-brand-500 hover:text-brand-600"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2
+                             text-sm font-semibold text-brand-500
+                             hover:text-brand-600"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
 
               {errors.password && (
-                <p className="mt-1 text-sm text-red-500">
+                <p className="mt-1 text-sm text-red-600">
                   {errors.password}
                 </p>
               )}
             </div>
 
+            {/* Forgot Password */}
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-semibold text-brand-500 hover:text-brand-600"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+
+            {/* General Error */}
+            {errors.general && (
+              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                {errors.general}
+              </div>
+            )}
+
             {/* Login Button */}
             <button
               type="submit"
+              disabled={loading}
               className="w-full rounded-lg bg-brand-500 px-4 py-3
                          font-semibold text-white
-                         transition-colors hover:bg-brand-600"
+                         transition-colors hover:bg-brand-600
+                         disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Log In
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
+          {/* Signup Link */}
           <p className="mt-6 text-center text-sm text-brand-600">
             Don't have an account?{" "}
             <Link
@@ -179,6 +198,7 @@ try {
               Sign Up
             </Link>
           </p>
+
         </div>
       </div>
     </section>
@@ -186,3 +206,5 @@ try {
 }
 
 export default LoginPage;
+
+

@@ -19,6 +19,7 @@ import ManageTicketsPage from "../pages/tickets/ManageTicketsPage";
 
 import MyBookingsPage from "../pages/bookings/MyBookingsPage";
 import VerifyEmailPage from "../pages/VerifyEmailPage";
+import ForgotPasswordPage from "../pages/auth/ForgotPasswordPage";
 
 function AppRoutes() {
   return (
@@ -75,6 +76,11 @@ function AppRoutes() {
 
         </Route>
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+        <Route
+         path="/forgot-password"
+         element={<ForgotPasswordPage />}
+         />
 
       </Route>
     </Routes>
